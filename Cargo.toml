@@ -1,7 +1,10 @@
 [package]
 name = "dupl-server-proto-clib"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Alexey Voznyuk <me@swizard.info>"]
+
+[lib]
+crate-type = ["staticlib"]
 
 [dependencies]
 libc = "*"
