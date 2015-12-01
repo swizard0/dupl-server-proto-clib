@@ -3,7 +3,7 @@ CXX = c++
 RM = rm -f
 CPPFLAGS = -g -I ../include
 LDFLAGS = -g
-LDLIBS = -L ../target/release -ldupl_server_proto_clib -lzmq
+LDLIBS = -L ../target/release -ldupl_server_proto_clib -lzmq -ldl
 
 SRCS = dupl_client.cpp
 OBJS = $(subst .cpp,.o,$(SRCS))
