@@ -168,7 +168,7 @@ fn native_request(client: &mut DuplClient, req_json_slice: &[u8], pretty_print: 
         if let Some(ref mut sock) = client.sock {
             let req_str = try!(std::str::from_utf8(req_json_slice).map_err(|e| ErrorMsg::from_string(format!("request utf8 error: {}", e))));
             let valid_json_string: String = req_str.chars().map(|c| if c.is_control() { ' ' } else { c }).collect();
-            let req: proto::Req<String> = try!(proto::json::json_str_to_anything(&valid_json_string).map_err(|e| {
+            let req: proto::Trans<String> = try!(proto::json::json_str_to_anything(&valid_json_string).map_err(|e| {
                 ErrorMsg::from_string(format!("request parse failed: {}", e))
             }));
 
@@ -285,8 +285,11 @@ mod test {
         let (server_tx, server_rx) = sync_channel(0);
         let server_thread = thread::spawn(move || {
             let req_msg = sock.recv_msg(0).unwrap();
-            let (req, _) = proto::Req::<String>::decode(&req_msg).unwrap();
-            let rep = proto::Rep::Unexpected(req);
+            let (trans, _) = proto::Trans::<String>::decode(&req_msg).unwrap();
+            let rep = proto::Rep::Unexpected(match trans { 
+                proto::Trans::Async(req) => req,
+                proto::Trans::Sync(req) => req,
+            });
             let required = rep.encode_len();
             let mut rep_msg = zmq::Message::with_capacity(required).unwrap();
             rep.encode(&mut rep_msg);
@@ -301,7 +304,7 @@ mod test {
             assert!(!client.is_null());
             let ffi_zmq_addr = ffi::CString::new(zmq_addr.as_bytes()).unwrap();
             try_call!(dupl_client_init, client, ffi_zmq_addr.as_ptr(), 1000);
-            let req_json = proto::json::req_to_json(&proto::Req::Lookup(proto::Workload::Single(proto::LookupTask {
+            let req_json = proto::json::req_to_json(&proto::Trans::Async(proto::Req::Lookup(proto::Workload::Single(proto::LookupTask {
                 text: "some text to lookup".to_owned(),
                 result: proto::LookupType::BestOrMine,
                 post_action: proto::PostAction::InsertNew {
@@ -309,7 +312,7 @@ mod test {
                     assign: proto::ClusterAssign::ClientChoice(177),
                     user_data: "some user data".to_owned(),
                 }
-            })));
+            }))));
             let req_json_string = format!("{}", req_json);
             let ffi_req_json_string = req_json_string.as_bytes().as_ptr() as *const c_char;
             let ffi_req_json_string_len = req_json_string.as_bytes().len() as size_t;
