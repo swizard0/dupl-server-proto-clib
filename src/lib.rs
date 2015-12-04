@@ -309,7 +309,10 @@ mod test {
                 result: proto::LookupType::BestOrMine,
                 post_action: proto::PostAction::InsertNew {
                     cond: proto::InsertCond::BestSimLessThan(0.5),
-                    assign: proto::ClusterAssign::ClientChoice(177),
+                    assign: proto::ClusterAssign {
+                        cond: proto::AssignCond::Always,
+                        choice: proto::ClusterChoice::ClientChoice(177),
+                    },
                     user_data: "some user data".to_owned(),
                 }
             }))));
@@ -330,7 +333,10 @@ mod test {
                     result: proto::LookupType::BestOrMine,
                     post_action: proto::PostAction::InsertNew {
                         cond: proto::InsertCond::BestSimLessThan(0.5),
-                        assign: proto::ClusterAssign::ClientChoice(177),
+                        assign: proto::ClusterAssign {
+                            cond: proto::AssignCond::Always,
+                            choice: proto::ClusterChoice::ClientChoice(177),
+                        },
                         user_data: ref rep_user_data,
                     }
                 }))) if rep_text == "some text to lookup" && rep_user_data == "some user data" => (),
