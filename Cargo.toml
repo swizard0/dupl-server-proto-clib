@@ -1,12 +1,12 @@
 [package]
 name = "dupl-server-proto-clib"
-version = "0.2.1"
+version = "0.2.2"
 authors = ["Alexey Voznyuk <me@swizard.info>"]
 
 [lib]
 crate-type = ["staticlib"]
 
 [dependencies]
-libc = "*"
+libc = "0.2"
 zmq = { git = "https://github.com/erickt/rust-zmq.git" }
-dupl_server_proto = { path = "dupl-server-proto" }
+dupl_server_proto = { git = "https://github.com/swizard0/dupl-server-proto.git" }
