@@ -1,0 +1,5 @@
+MANIFEST		            This file
+Makefile.PL		            Will create 'Makefile' to build this extention
+HashDuplClient.pm	        Bootstrap & documentation
+HashDuplClient.xs	        XS glue
+typemap			            Convert between AIP::Kribrum::HashDuplClient
