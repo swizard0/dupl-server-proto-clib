@@ -174,9 +174,9 @@ fn native_request(client: &mut DuplClient, req_json_slice: &[u8], pretty_print: 
 
             let required = req.encode_len();
             let mut req_msg =
-                try!(zmq::Message::with_capacity(required).map_err(|e| ErrorMsg::from_string(format!("zmq message alloc failed: {}", e))));
+                zmq::Message::with_capacity(required);
             req.encode(&mut req_msg);
-            try!(sock.send_msg(req_msg, 0).map_err(|e| ErrorMsg::from_string(format!("zmq send failed: {}", e))));
+            try!(sock.send(req_msg, 0).map_err(|e| ErrorMsg::from_string(format!("zmq send failed: {}", e))));
 
             let sock_online = {
                 let mut pollitems = [sock.as_poll_item(zmq::POLLIN)];
@@ -278,22 +278,22 @@ mod test {
     fn request() {
         let zmq_addr = "ipc:///tmp/sock_b";
         // server
-        let mut ctx = zmq::Context::new();
-        let mut sock = ctx.socket(zmq::REP).unwrap();
+        let ctx = zmq::Context::new();
+        let sock = ctx.socket(zmq::REP).unwrap();
         sock.set_linger(0).unwrap();
         sock.bind(zmq_addr).unwrap();
         let (server_tx, server_rx) = sync_channel(0);
         let server_thread = thread::spawn(move || {
             let req_msg = sock.recv_msg(0).unwrap();
             let (trans, _) = proto::Trans::<String>::decode(&req_msg).unwrap();
-            let rep = proto::Rep::Unexpected(match trans { 
+            let rep = proto::Rep::Unexpected(match trans {
                 proto::Trans::Async(req) => req,
                 proto::Trans::Sync(req) => req,
             });
             let required = rep.encode_len();
-            let mut rep_msg = zmq::Message::with_capacity(required).unwrap();
+            let mut rep_msg = zmq::Message::with_capacity(required);
             rep.encode(&mut rep_msg);
-            sock.send_msg(rep_msg, 0).unwrap();
+            sock.send(rep_msg, 0).unwrap();
             server_tx.send(()).unwrap();
         });
         // client

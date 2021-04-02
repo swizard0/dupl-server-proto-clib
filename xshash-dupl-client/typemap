@@ -1,0 +1,3 @@
+TYPEMAP
+dupl_client_t T_PTROBJ
+AIP::Kribrum::HashDuplClient T_PTROBJ
