@@ -1,6 +1,6 @@
 [package]
 name = "dupl-server-proto-clib"
-version = "0.2.3"
+version = "0.2.4"
 authors = ["Alexey Voznyuk <me@swizard.info>"]
 
 [lib]

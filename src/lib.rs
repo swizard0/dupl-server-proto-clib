@@ -166,41 +166,51 @@ pub extern fn dupl_client_request(
 fn native_request(client: &mut DuplClient, req_json_slice: &[u8], pretty_print: bool) -> Result<String, RequestError> {
     loop {
         if let Some(ref mut sock) = client.sock {
-            let req_str = try!(std::str::from_utf8(req_json_slice).map_err(|e| ErrorMsg::from_string(format!("request utf8 error: {}", e))));
+            let req_str = std::str::from_utf8(req_json_slice)
+                .map_err(|e| ErrorMsg::from_string(format!("request utf8 error: {}", e)))?;
             let valid_json_string: String = req_str.chars().map(|c| if c.is_control() { ' ' } else { c }).collect();
-            let req: proto::Trans<String> = try!(proto::json::json_str_to_anything(&valid_json_string).map_err(|e| {
-                ErrorMsg::from_string(format!("request parse failed: {}", e))
-            }));
+            let req: proto::Trans<String> = proto::json::json_str_to_anything(&valid_json_string)
+                .map_err(|e| {
+                    ErrorMsg::from_string(format!("request parse failed: {}", e))
+                })?;
 
             let required = req.encode_len();
             let mut req_msg =
-                zmq::Message::with_capacity(required);
+                zmq::Message::with_size(required);
             req.encode(&mut req_msg);
-            try!(sock.send(req_msg, 0).map_err(|e| ErrorMsg::from_string(format!("zmq send failed: {}", e))));
+            sock.send(req_msg, 0)
+                .map_err(|e| ErrorMsg::from_string(format!("zmq send failed: {}", e)))?;
 
             let sock_online = {
                 let mut pollitems = [sock.as_poll_item(zmq::POLLIN)];
-                try!(zmq::poll(&mut pollitems, client.config.as_ref().map(|cfg| cfg.timeout_ms as i64).unwrap_or(-1)).map_err(|e| {
-                    ErrorMsg::from_string(format!("zmq poll failed: {}", e))
-                }));
+                zmq::poll(&mut pollitems, client.config.as_ref().map(|cfg| cfg.timeout_ms as i64).unwrap_or(-1))
+                    .map_err(|e| {
+                        ErrorMsg::from_string(format!("zmq poll failed: {}", e))
+                    })?;
                 pollitems[0].get_revents() == zmq::POLLIN
             };
             if sock_online {
-                let rep_msg = try!(sock.recv_msg(0).map_err(|e| ErrorMsg::from_string(format!("zmq recv failed: {}", e))));
-                let (rep, _) = try!(proto::Rep::<String>::decode(&rep_msg).map_err(|e| {
-                    ErrorMsg::from_string(format!("rep packet decoding fail: {}", e))
-                }));
+                let rep_msg = sock.recv_msg(0)
+                    .map_err(|e| ErrorMsg::from_string(format!("zmq recv failed: {}", e)))?;
+                let (rep, _) = proto::Rep::<String>::decode(&rep_msg)
+                    .map_err(|e| {
+                        ErrorMsg::from_string(format!("rep packet decoding fail: {}", e))
+                    })?;
                 let rep_json = proto::json::rep_to_json(&rep);
                 return Ok(if pretty_print { format!("{}", rep_json.pretty()) } else { format!("{}", rep_json) })
             } else {
                 return Err(RequestError::TimedOut)
             }
         } else if let Some(ref mut cfg) = client.config {
-            let mut socket = try!(cfg.context.socket(zmq::REQ).map_err(|e| ErrorMsg::from_string(format!("zmq socket failed: {}", e))));
-            try!(socket.set_linger(0).map_err(|e| ErrorMsg::from_string(format!("zmq zero linger failed: {}", e))));
-            try!(socket.connect(&cfg.connect_addr[..]).map_err(|e| {
-                ErrorMsg::from_string(format!("zmq connect to {} failed: {}", cfg.connect_addr, e))
-            }));
+            let socket = cfg.context
+                .socket(zmq::REQ)
+                .map_err(|e| ErrorMsg::from_string(format!("zmq socket failed: {}", e)))?;
+            socket.set_linger(0)
+                .map_err(|e| ErrorMsg::from_string(format!("zmq zero linger failed: {}", e)))?;
+            socket.connect(&cfg.connect_addr[..])
+                .map_err(|e| {
+                    ErrorMsg::from_string(format!("zmq connect to {} failed: {}", cfg.connect_addr, e))
+                })?;
             client.sock = Some(socket);
         }
     }
@@ -223,7 +233,7 @@ pub extern fn dupl_client_last_error(dc: *mut DuplClient) -> *const c_char {
         Some(ref mut native_msg) => {
             if let ErrorMsg::Native(ref msg) = mem::replace(native_msg, ErrorMsg::Invalid) {
                 if let Ok(foreign_msg) = ffi::CString::new(msg.as_bytes()) {
-                    mem::replace(native_msg, ErrorMsg::Foreign(foreign_msg));
+                    let _ = mem::replace(native_msg, ErrorMsg::Foreign(foreign_msg));
                 }
             }
 
